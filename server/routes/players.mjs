@@ -147,21 +147,80 @@ router.post("/login", async (req, res) => {
     res.status(200).json({ token });
 });
 
+// router.post('/checkNameAvailability', async (req, res) => {
+//     try {
+//         const collection = await db.collection("details");
+//         const existingUser = await collection.findOne({ name: req.body.name });
+
+//         if (existingUser.name === req.body.name) {
+//             res.status(200).json({ available: false, message: "Name already taken, please log in or try another one" });
+//         } else {
+//             res.status(200).json({ available: true });
+//         }
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: 'Internal Server Error' });
+//     }
+// });
+
+// router.post('/checkEmailAvailability', async (req, res) => {
+//     try {
+//         const collection = await db.collection("details");
+//         const existingUser = await collection.findOne({ email: req.body.email });
+
+//         if (existingUser.email === req.body.email) {
+//             res.status(200).json({ available: false, message: "Email already taken, please log in or try another one" });
+//         } else {
+//             res.status(200).json({ available: true });
+//         }
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: 'Internal Server Error' });
+//     }
+// });
+
+router.post('/checkAvailability', async (req, res) => {
+    try {
+        const collection = await db.collection("details");
+        const existingUser = await collection.findOne({ $or: [{ name: req.body.name }, { email: req.body.email }] });
+
+        if (existingUser) {
+            if (existingUser.name === req.body.name) {
+                res.status(200).json({ available: false, message: `name already taken, please log in or try another one` });
+            } else if (existingUser.email === req.body.email) {
+                res.status(200).json({ available: false, message: `email already taken, please log in or try another one` });
+            } else {
+                res.status(200).json({ available: true });
+            }
+        } else {
+            res.status(200).json({ available: true });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
 
 
 // // This section will help you create a new player (register)
 router.post("/", uploadMiddleware, async (req, res, next) => {
     try {
+
         // Check if the email or name already exists in the database
         const collection = await db.collection("details");
         const existingUser = await collection.findOne({ $or: [{ email: req.body.email }, { name: req.body.name }] });
 
         if (existingUser) {
+            // const response = {};
             if (existingUser.email === req.body.email) {
-                res.status(400).json({ message: "Email already taken, please log in or try another one" });
+                res.status(400).json({ available: false, message: "Email already taken, please log in or try another one" });
             } else {
-                res.status(400).json({ message: "Name already taken, please log in or try another one" });
+                res.status(400).json({ available: false, message: "Name already taken, please log in or try another one" });
             }
+            // response.available = false;
+            res.status(200).json(response);
         } else {
             // Check if the passwords match
             if (req.body.password !== req.body.confirmPassword) {
@@ -197,7 +256,7 @@ router.post("/", uploadMiddleware, async (req, res, next) => {
             const token = jwt.sign({ email: req.body.email }, 'your_secret_key');
 
             // Send a success response with the token
-            res.status(201).json({ message: "Player created successfully", token });
+            res.status(201).json({ available: true, message: "Player created successfully", token });
         }
     }
     catch (err) {
